@@ -1,0 +1,88 @@
+name: UI tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ui-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  behave:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Java for the Allure report
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Ensure Google Chrome
+        run: |
+          if ! command -v google-chrome >/dev/null 2>&1; then
+            wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            sudo apt-get update
+            sudo apt-get install -y /tmp/chrome.deb
+          fi
+          google-chrome --version
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Check checkout arithmetic
+        run: python -m unittest discover -s framework -p "test_*.py"
+
+      - name: Run Behave
+        env:
+          HEADLESS: "true"
+          EXPLICIT_WAIT: "20"
+        run: |
+          behave \
+            --no-color \
+            -f pretty -o - \
+            -f allure_behave.formatter:AllureFormatter -o reports/allure-results
+
+      - name: Install Allure command line
+        if: always()
+        run: |
+          curl -sSL -o /tmp/allure.tgz \
+            https://github.com/allure-framework/allure2/releases/download/2.46.2/allure-2.46.2.tgz
+          tar -xzf /tmp/allure.tgz -C /tmp
+          echo "/tmp/allure-2.46.2/bin" >> "$GITHUB_PATH"
+
+      - name: Generate the Allure report
+        if: always()
+        run: |
+          if [ -d reports/allure-results ] && [ -n "$(ls -A reports/allure-results 2>/dev/null)" ]; then
+            allure generate reports/allure-results --clean -o reports/allure-report
+          else
+            echo "No Allure results were produced."
+          fi
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: behave-test-reports
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            reports/junit
+            reports/allure-results
+            reports/allure-report
+            reports/screenshots
