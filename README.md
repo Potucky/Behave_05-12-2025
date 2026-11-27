@@ -4,15 +4,22 @@ Portfolio project by [Vasyl Popovich](https://github.com/Potucky).
 
 This is a portfolio demo, not code from an employer, and it is not affiliated with Sauce Labs. It is a BDD UI suite for the public [Sauce Demo](https://www.saucedemo.com) store (Swag Labs). The usernames and password are the ones printed on that site's login page. No secrets are stored in this repository.
 
-[![UI tests](https://github.com/Potucky/Behave_05-12-2025/actions/workflows/ui-tests.yml/badge.svg)](https://github.com/Potucky/Behave_05-12-2025/actions/workflows/ui-tests.yml)
+[![UI tests](https://github.com/Potucky/behave-bdd-ecommerce-tests/actions/workflows/ui-tests.yml/badge.svg)](https://github.com/Potucky/behave-bdd-ecommerce-tests/actions/workflows/ui-tests.yml)
 
-## What it demonstrates
+[Live test report](https://potucky.github.io/behave-bdd-ecommerce-tests/)
 
-- Gherkin features for login, inventory, cart, and checkout, with Scenario Outlines and tags (`@smoke`, `@negative`, `@sorting`)
-- Selenium page objects. Step definitions stay thin and call the pages
+## What this project demonstrates
+
+- BDD with Gherkin: Behave features for login, inventory, cart, and checkout, including Scenario Outlines and tags (`@smoke`, `@negative`, `@sorting`)
+- Page Object Model: Selenium page objects under `pages/`, with thin step definitions and a new browser for every scenario
+- Validation of displayed totals: the backpack checkout asserts `$29.99`, tax `$2.40`, and total `$32.39`, then checks that line prices sum to the item total, tax is 8% rounded half-up to the cent, and the grand total is item total plus tax. `framework/test_money.py` covers that rounding without a browser
+- Negative-path coverage: blank credentials, a wrong password, the locked demo account, and each missing checkout field
+- CI test reports: GitHub Actions on every push to `main` and every pull request produces JUnit XML, an Allure HTML report, and failure screenshots. A push to `main` also publishes that HTML report to GitHub Pages
+
+## Suite design
+
 - A fresh browser per scenario, so cart and session state cannot leak
 - Explicit waits on the result of an action (URL, button label, heading, error text, sort label)
-- Checkout checks a Data QA person would write: the backpack totals Sauce Demo shows (`$29.99`, tax `$2.40`, total `$32.39`), and a separate check that line prices sum to the item total, tax is 8% rounded half-up to the cent, and the grand total is item total plus tax
 - Configuration from environment variables (see `.env.example`)
 - GitHub Actions on every push to `main` and every pull request: headless Chrome, JUnit XML, an Allure HTML report, and failure screenshots uploaded as one artifact
 
@@ -32,6 +39,7 @@ This is a portfolio demo, not code from an employer, and it is not affiliated wi
 
 ```text
 .github/workflows/ui-tests.yml   # push and pull_request test workflow
+.github/workflows/pages.yml      # push to main: run the suite and publish the HTML report
 behave.ini                       # JUnit output and runner defaults
 config/settings.py               # environment configuration
 framework/driver_factory.py      # Chrome session
@@ -40,6 +48,7 @@ framework/test_money.py          # unit tests for that arithmetic
 pages/                           # page objects (login, inventory, cart, checkout, header)
 features/                        # Gherkin, environment hooks, step definitions
 features/environment.py          # setup, teardown, screenshot on failure
+docs/pages/index.html            # GitHub Pages landing page; links to the Allure report
 docs/images/allure-overview.png  # report from a real local run
 ```
 
@@ -119,6 +128,8 @@ allure open reports/allure-report
 
 The badge above reads the workflow on the default branch, so it updates after this workflow is on `main`.
 
+`.github/workflows/pages.yml` runs on a push to `main`. It runs the same unit tests and Behave suite, generates the Allure HTML report, and deploys that report with [docs/pages/index.html](docs/pages/index.html), which links to it. The published site is the [live test report](https://potucky.github.io/behave-bdd-ecommerce-tests/). GitHub Pages has to use **Source: GitHub Actions** for that deploy. This repository is already set that way. The workflow does not change repository settings.
+
 ## Sample output
 
 Excerpt from a headless local run (login), then the full-suite summary:
@@ -162,3 +173,7 @@ Allure overview from that same run:
 21 scenarios, 109 steps. The money unit tests add the rounding cases (`$29.99` → tax `$2.40`, and half-up on `$15.99`) without opening a browser.
 
 Left out on purpose: other browsers, mobile viewports, visual diffs, the Sauce Labs marketing links in the menu, and the demo users whose only behavior is a delay or a broken image.
+
+## Author
+
+Vasyl Popovich, QA Automation Engineer, Miami, FL. GitHub: https://github.com/Potucky
